@@ -17,7 +17,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 app.post("/auth/google/token", async (req, res) => {
-  const { code, redirectUri, buttonsSetting, isDarkMode } = req.body;
+  const { code, redirectUri, buttonsSetting, isDarkMode, addressOfNewTab } = req.body;
   try {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -43,6 +43,7 @@ app.post("/auth/google/token", async (req, res) => {
         googleId: userData.id,
         buttonsSetting,
         isDarkMode,
+        addressOfNewTab,
       });
     }
 
@@ -69,7 +70,11 @@ app.get("/api/user/:googleId", async (req, res) => {
 
 app.put("/api/user/:googleId", async (req, res) => {
   try {
-    const updated = await User.findOneAndUpdate({ googleId: req.params.googleId }, { buttonsSetting: req.body.buttonsSetting, isDarkMode: req.body.isDarkMode }, { new: true });
+    const updated = await User.findOneAndUpdate(
+      { googleId: req.params.googleId },
+      { buttonsSetting: req.body.buttonsSetting, isDarkMode: req.body.isDarkMode, addressOfNewTab: req.body.addressOfNewTab },
+      { new: true }
+    );
     if (!updated) return res.status(404).json({ message: "User not found" });
     res.json(updated);
   } catch (err) {
