@@ -58,13 +58,19 @@ app.post("/auth/google/token", async (req, res) => {
 });
 
 app.get("/api/user/:googleId", async (req, res) => {
+  const { googleId } = req.params;
+  console.log("요청된 googleId:", googleId);
+
   try {
-    const user = await User.findOne({ googleId: req.params.googleId });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findOne({ googleId });
+    console.log("찾은 user:", user);
+
+    if (!user) return res.status(404).json({ error: "Failed to get user" });
+
     res.json(user);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to get user" });
+  } catch (error) {
+    console.error("DB 조회 에러:", error);
+    res.status(500).json({ error: "DB error" });
   }
 });
 
