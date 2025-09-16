@@ -8,7 +8,7 @@ import User from "./models/user.js";
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 mongoose
@@ -17,7 +17,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 app.post("/auth/google/token", async (req, res) => {
-  const { code, redirectUri, buttonsSetting, isDarkMode, addressOfNewTab } = req.body;
+  const { code, redirectUri, buttonClickCounts, buttonsSetting, isDarkMode, addressOfNewTab } = req.body;
   try {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -41,6 +41,7 @@ app.post("/auth/google/token", async (req, res) => {
     if (!user) {
       user = await User.create({
         googleId: userData.id,
+        buttonClickCounts,
         buttonsSetting,
         isDarkMode,
         addressOfNewTab,
@@ -78,7 +79,12 @@ app.put("/api/user/:googleId", async (req, res) => {
   try {
     const updated = await User.findOneAndUpdate(
       { googleId: req.params.googleId },
-      { buttonsSetting: req.body.buttonsSetting, isDarkMode: req.body.isDarkMode, addressOfNewTab: req.body.addressOfNewTab },
+      {
+        buttonClickCounts: req.body.buttonClickCounts,
+        buttonsSetting: req.body.buttonsSetting,
+        isDarkMode: req.body.isDarkMode,
+        addressOfNewTab: req.body.addressOfNewTab,
+      },
       { new: true }
     );
     if (!updated) return res.status(404).json({ message: "User not found" });
@@ -89,4 +95,5 @@ app.put("/api/user/:googleId", async (req, res) => {
   }
 });
 
-app.listen(3001, () => console.log("🚀 Server running on http://localhost:3001"));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
