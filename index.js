@@ -5,6 +5,7 @@ import fetch from "node-fetch";
 import mongoose from "mongoose";
 import User from "./models/user.js";
 import { issueToken, requireAuth } from "./middlewares/auth.js";
+import { pickUserSettings } from "./utils/pickUserSettings.js";
 
 dotenv.config();
 
@@ -26,35 +27,6 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
-
-function pickUserSettings(body) {
-  const settings = {};
-
-  if (Array.isArray(body.buttonsSetting)) {
-    settings.buttonsSetting = body.buttonsSetting;
-  }
-  if (typeof body.isDarkMode === "boolean") {
-    settings.isDarkMode = body.isDarkMode;
-  }
-  if (
-    typeof body.addressOfNewTab === "string" &&
-    /^https?:\/\//.test(body.addressOfNewTab)
-  ) {
-    settings.addressOfNewTab = body.addressOfNewTab;
-  }
-  if (
-    body.buttonClickCounts &&
-    typeof body.buttonClickCounts === "object" &&
-    !Array.isArray(body.buttonClickCounts) &&
-    Object.values(body.buttonClickCounts).every(
-      (count) => Number.isInteger(count) && count >= 0,
-    )
-  ) {
-    settings.buttonClickCounts = body.buttonClickCounts;
-  }
-
-  return settings;
-}
 
 app.post("/auth/google/token", async (req, res) => {
   const { code, redirectUri } = req.body;
