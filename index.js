@@ -28,9 +28,35 @@ const app = express();
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: "100kb" }));
 
-app.get("/health", (req, res) => {
-  const isDbConnected = mongoose.connection.readyState === 1;
-  res.status(isDbConnected ? 200 : 503).json({ ok: isDbConnected });
+// 서버리스(Vercel)에서는 요청이 들어올 때 연결하고, 같은 인스턴스에서는 연결을 재사용한다
+let dbConnection = null;
+function connectDB() {
+  if (!dbConnection) {
+    dbConnection = mongoose.connect(process.env.MONGO_URI).catch((error) => {
+      dbConnection = null;
+      throw error;
+    });
+  }
+  return dbConnection;
+}
+
+app.get("/health", async (req, res) => {
+  try {
+    await connectDB();
+    res.json({ ok: true });
+  } catch {
+    res.status(503).json({ ok: false });
+  }
+});
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error);
+    res.status(503).json({ error: "Database unavailable" });
+  }
 });
 
 app.post("/auth/google/token", async (req, res) => {
@@ -179,14 +205,17 @@ app.delete("/api/user/me", requireAuth, async (req, res) => {
   }
 });
 
-// DB 연결이 된 뒤에만 요청을 받는다. 연결에 실패하면 프로세스를 종료해 재시작되게 한다
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
-    process.exit(1);
-  });
+export default app;
+
+// Vercel 이외(로컬, Render 등)에서는 DB 연결 후 직접 포트를 연다
+if (!process.env.VERCEL) {
+  connectDB()
+    .then(() => {
+      console.log("✅ Connected to MongoDB");
+      app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    })
+    .catch((err) => {
+      console.error("❌ MongoDB connection error:", err);
+      process.exit(1);
+    });
+}
